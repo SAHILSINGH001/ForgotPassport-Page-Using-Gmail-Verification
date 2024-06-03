@@ -1,0 +1,119 @@
+<%@ page import="java.sql.*" %>
+<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Reset Password</title>
+<link href='https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.css' rel='stylesheet'>
+<script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+<style>
+    .placeicon { font-family: fontawesome; }
+    .custom-control-label::before { background-color: #dee2e6; border: #dee2e6; }
+</style>
+</head>
+<body oncontextmenu='return false' class='snippet-body bg-info'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-social/5.1.1/bootstrap-social.css">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-9 col-lg-7 col-xl-6 mt-5">
+                <div class="container bg-white rounded mt-2 mb-2 px-0">
+                    <div class="row justify-content-center align-items-center pt-3">
+                        <h1><strong>Reset Password</strong></h1>
+                    </div>
+                    <div class="pt-3 pb-3">
+                        <form class="form-horizontal" action="newPassword.jsp" method="POST">
+                            <div class="form-group row justify-content-center px-3">
+                                <div class="col-9 px-0">
+                                    <input type="email" name="email" placeholder="&#xf007; &nbsp; Email" class="form-control border-info placeicon" required>
+                                </div>
+                            </div>
+                            <div class="form-group row justify-content-center px-3">
+                                <div class="col-9 px-0">
+                                    <input type="password" name="password" placeholder="&#xf084; &nbsp; New Password" class="form-control border-info placeicon" required>
+                                </div>
+                            </div>
+                            <div class="form-group row justify-content-center px-3">
+                                <div class="col-9 px-0">
+                                    <input type="password" name="confPassword" placeholder="&#xf084; &nbsp; Confirm New Password" class="form-control border-info placeicon" required>
+                                </div>
+                            </div>
+                            <div class="form-group row justify-content-center">
+                                <div class="col-3 px-3 mt-3">
+                                    <input type="submit" value="Reset" class="btn btn-block btn-info">
+                                </div>
+                            </div>
+                        </form>
+                        <%
+                            if ("POST".equalsIgnoreCase(request.getMethod())) {
+                                String email = request.getParameter("email");
+                                String password = request.getParameter("password");
+                                String confPassword = request.getParameter("confPassword");
+
+                                if (email != null && password != null && confPassword != null && password.equals(confPassword)) {
+                                    Connection conn = null;
+                                    PreparedStatement ps = null;
+                                    ResultSet rs = null;
+
+                                    try {
+                                        Class.forName("com.mysql.cj.jdbc.Driver");
+                                        conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/sailproject", "root", "sahil");
+
+                                        
+                                        String checkEmailSql = "SELECT COUNT(*) FROM users WHERE uemail=?";
+                                        ps = conn.prepareStatement(checkEmailSql);
+                                        ps.setString(1, email);
+                                        rs = ps.executeQuery();
+
+                                        if (rs.next() && rs.getInt(1) > 0) {
+                                           
+                                            String updateSql = "UPDATE users SET upwd=? WHERE uemail=?";
+                                            ps = conn.prepareStatement(updateSql);
+                                            ps.setString(1, password); 
+                                            ps.setString(2, email);
+
+                                            int rowsUpdated = ps.executeUpdate();
+                                            if (rowsUpdated > 0) {
+                                                out.println("<div class='alert alert-success' role='alert'>Password updated successfully!</div>");
+                                            } else {
+                                                out.println("<div class='alert alert-danger' role='alert'>Error updating password. Please try again.</div>");
+                                            }
+                                        } else {
+                                            out.println("<div class='alert alert-danger' role='alert'>Email ID not found!</div>");
+                                        }
+                                    } catch (Exception e) {
+                                        out.println("<div class='alert alert-danger' role='alert'>Database error: " + e.getMessage() + "</div>");
+                                    } finally {
+                                        try {
+                                            if (rs != null) rs.close();
+                                            if (ps != null) ps.close();
+                                            if (conn != null) conn.close();
+                                        } catch (SQLException e) {
+                                            out.println("<div class='alert alert-danger' role='alert'>Database error: " + e.getMessage() + "</div>");
+                                        }
+                                    }
+                                } else {
+                                    out.println("<div class='alert alert-danger' role='alert'>Passwords do not match or missing fields!</div>");
+                                }
+                            }
+                        %>
+                    </div>
+                    <div class="mx-0 px-0 bg-light">
+                        <div class="px-4 pt-5"><hr></div>
+                        <div class="pt-2">
+                            <div class="row justify-content-center">
+                                <h5>Don't have an Account?<span><a href="registration.jsp" class="text-danger"> Register Now!</a></span></h5>
+                            </div>
+                            <div class="row justify-content-center align-items-center pt-4 pb-5">
+                                <div class="col-4"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type='text/javascript' src='https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js'></script>
+</body>
+</html>

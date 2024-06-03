@@ -1,0 +1,100 @@
+package com.sahilsinghrajput.registration;
+
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Properties;
+import java.util.Random;
+import javax.mail.*;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+/**
+ * Servlet implementation class ForgotPassword
+ */
+@WebServlet("/forgotPassword")
+public class ForgotPassword extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+   
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		
+		String email = request.getParameter("email");
+		HttpSession session = request.getSession();
+		Connection con = null;
+		PreparedStatement pst = null;
+		ResultSet rs=null;
+		
+		try {
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/sailproject?useSSL=false", "root", "sahil");
+			pst = con.prepareStatement("Select * FROM users WHERE uemail =?");
+			pst.setString(1, email);
+			rs=pst.executeQuery();
+			
+			if(rs.next()) {
+				 int otp = new Random().nextInt(899999) + 100000;
+	                session.setAttribute("otp", otp);
+	                session.setAttribute("email", email);
+	                
+	                String from = "sr9827184@gmail.com";
+	                String password = "mvfa drnf vwoy kcqp";
+	                
+	                Properties props = new Properties();
+	                props.put("mail.smtp.host", "smtp.gmail.com");
+	                props.put("mail.smtp.port", "587");
+	                props.put("mail.smtp.auth", "true");
+	                props.put("mail.smtp.starttls.enable", "true");
+	                
+	                Session mailSession=Session.getInstance(props, new javax.mail.Authenticator() {
+	                	protected PasswordAuthentication getPasswordAuthentication() {
+	                		return new PasswordAuthentication(from,password);
+	                	}
+	                });
+	                
+	                try {
+	                	MimeMessage message = new MimeMessage(mailSession);
+	                	message.setFrom(new InternetAddress(from));
+	                	message.addRecipient(Message.RecipientType.TO,new InternetAddress(email));
+	                	 message.setSubject("Password Reset OTP");
+	                     message.setText("Your OTP for password reset is: " + otp);
+	                     Transport.send(message);
+	                }catch(MessagingException e) {
+	                	throw new RuntimeException("Failed to send OTP",e);
+	                	
+	                }
+	                response.sendRedirect("EnterOtp.jsp");
+	                
+			}else {
+				response.sendRedirect("forgotPassword.jsp?message=User+email+not+found");
+			}
+			
+			
+			
+			}catch(SQLException | ClassNotFoundException e) {
+				throw new ServletException("Error closing database resources", e);
+			}finally {
+				try {
+					 if (rs != null) rs.close();
+		                if (pst != null) pst.close();
+		                if (con != null) con.close();
+				}catch(SQLException ex) {
+					throw new ServletException("Error closing database resources",ex);
+				}
+			}
+		
+		
+	}
+
+}

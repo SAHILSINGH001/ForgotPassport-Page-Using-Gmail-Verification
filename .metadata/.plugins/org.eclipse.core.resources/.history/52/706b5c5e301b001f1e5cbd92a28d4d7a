@@ -1,0 +1,66 @@
+package com.sahilsinghrajput.registration;
+
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+@WebServlet("/newPassword")
+public class UpdatePasswordServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    	 HttpSession session = request.getSession();
+         String newPassword = request.getParameter("password");
+         String confPassword = request.getParameter("confPassword");
+         String email = (String) session.getAttribute("email");
+         RequestDispatcher dispatcher = null;
+
+         // Check if email is not null
+         if (email == null) {
+             request.setAttribute("status", "noEmail");
+             dispatcher = request.getRequestDispatcher("newPassword.jsp");
+             dispatcher.forward(request, response);
+             return;
+         }
+
+         // Check if passwords match
+         if (newPassword != null && confPassword != null && newPassword.equals(confPassword)) {
+             try {
+                 Class.forName("com.mysql.cj.jdbc.Driver");
+                 Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/sailproject", "root", "sahil");
+
+                 PreparedStatement pst = con.prepareStatement("update users set upwd = ? where uemail = ?");
+                 pst.setString(1, newPassword);
+                 pst.setString(2, email);
+
+                 int rowCount = pst.executeUpdate();
+                 if (rowCount > 0) {
+                     request.setAttribute("status", "resetSuccess");
+                     dispatcher = request.getRequestDispatcher("login.jsp");
+                 } else {
+                     request.setAttribute("status", "resetFailed");
+                     dispatcher = request.getRequestDispatcher("newPassword.jsp");
+                 }
+                 dispatcher.forward(request, response);
+                 con.close();  // Close the connection
+             } catch (Exception e) {
+                 e.printStackTrace();
+                 request.setAttribute("status", "error");
+                 dispatcher = request.getRequestDispatcher("newPassword.jsp");
+                 dispatcher.forward(request, response);
+             }
+         } else {
+             request.setAttribute("status", "passwordMismatch");
+             dispatcher = request.getRequestDispatcher("newPassword.jsp");
+             dispatcher.forward(request, response);
+         }
+    }
+}

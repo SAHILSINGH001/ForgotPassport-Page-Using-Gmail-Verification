@@ -1,0 +1,105 @@
+package com.sahilsinghrajput.registration;
+
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Properties;
+import java.util.Random;
+import javax.mail.*;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+@WebServlet("/forgotPassword")
+public class ForgotPassword extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String email = request.getParameter("email");
+        RequestDispatcher dispatcher = null;
+        HttpSession mySession = request.getSession();
+
+        if (email != null && !email.isEmpty()) {
+            if (isEmailExists(email)) {
+                int otpValue = generateOTP();
+                sendOTPByEmail(email, otpValue);
+
+                mySession.setAttribute("otp", otpValue);
+                mySession.setAttribute("email", email);
+
+                dispatcher = request.getRequestDispatcher("EnterOtp.jsp");
+                request.setAttribute("message", "OTP is sent to your email");
+                dispatcher.forward(request, response);
+            } else {
+                dispatcher = request.getRequestDispatcher("forgotPassword.jsp?message=User+email+not+found");
+                dispatcher.forward(request, response);
+            }
+        } else {
+            dispatcher = request.getRequestDispatcher("forgotPassword.jsp?message=Email+is+empty");
+            dispatcher.forward(request, response);
+        }
+    }
+
+    // Method to check if email exists in the database
+    private boolean isEmailExists(String email) throws ServletException {
+        boolean emailExists = false;
+        try (Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/sailproject", "root", "sahil");
+             PreparedStatement pst = con.prepareStatement("SELECT COUNT(*) FROM users WHERE uemail = ?");
+        ) {
+            pst.setString(1, email);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    emailExists = count > 0;
+                }
+            }
+        } catch (SQLException e) {
+            throw new ServletException("Error checking email existence", e);
+        }
+        return emailExists;
+    }
+
+    // Method to generate a random OTP
+    private int generateOTP() {
+        return new Random().nextInt(899999) + 100000;
+    }
+
+    // Method to send OTP by email
+    private void sendOTPByEmail(String email, int otp) throws ServletException {
+        String from = "sr9827184@gmail.com";
+        String password = "athpzsvzzawkmxru";
+
+        Properties props = new Properties();
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+
+        Session mailSession = Session.getInstance(props, new javax.mail.Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(from, password);
+            }
+        });
+
+        try {
+            MimeMessage message = new MimeMessage(mailSession);
+            message.setFrom(new InternetAddress(from));
+            message.addRecipient(Message.RecipientType.TO, new InternetAddress(email));
+            message.setSubject("Password Reset OTP");
+            message.setText("Your OTP for password reset is: " + otp);
+            Transport.send(message);
+        } catch (MessagingException e) {
+            throw new ServletException("Failed to send OTP", e);
+        }
+    }
+}
